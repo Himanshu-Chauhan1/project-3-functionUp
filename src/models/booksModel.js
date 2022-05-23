@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 let ObjectId = mongoose.Schema.Types.ObjectId
 const booksSchema = new mongoose.Schema({
-
+    bookCover: {
+        type: String,
+    },
     title: {
         type: String,
         required: true,
@@ -53,8 +55,6 @@ const booksSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    bookCover: {
-        type: String,
-    },
+
 }, { timestamps: true })
 module.exports = mongoose.model("Books", booksSchema)

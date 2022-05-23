@@ -3,6 +3,7 @@ const moment = require('moment')
 const userModel = require('../models/userModel')
 const reviewModel = require('../models/reviewModel')
 const booksModel = require('../models/booksModel')
+const aws = require("aws-sdk")
 
 
 //========================================VALIDATION FUNCTIONS==========================================================
@@ -96,7 +97,9 @@ const createBooks = async function(req, res) {
         if (!subcategory) {
             return res.status(400).send({ status: false, message: "subcategory is required..." })
         }
-
+        if (!bookCover) {
+            return res.status(400).send({ status: false, message: "Book Cover is required..." })
+        }
         if (!Array.isArray(subcategory)) {
             return res.status(400).send({ status: false, message: "Subcategory is must be an array of String" })
         }
@@ -121,12 +124,56 @@ const createBooks = async function(req, res) {
             return res.status(400).send({ status: false, message: "plz enter a valid Date format" });
         }
 
-        let bookCreated = await booksModel.create(data)
 
-        res.status(201).send({ status: true, message: "Success", data: bookCreated });
 
+        aws.config.update({
+            accessKeyId: "AKIAY3L35MCRVFM24Q7U",
+            secretAccessKey: "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",
+            region: "ap-south-1"
+        })
+
+        let uploadFile = async(file) => {
+            return new Promise(function(resolve, reject) {
+
+                let s3 = new aws.S3({ apiVersion: "2006-03-01" })
+
+                var uploadParams = {
+                    ACL: "public-read",
+                    Bucket: "classroom-training-bucket",
+                    Key: "Himanshu/" + file.originalname,
+                    Body: file.buffer
+                }
+
+                s3.upload(uploadParams, function(err, data) {
+                    if (err) {
+                        return reject({ "error": err })
+                    }
+
+                    console.log(data)
+                    console.log(" file uploaded succesfully ")
+                    return resolve(data.Location)
+                })
+            })
+        }
+
+        let files = req.files
+        if (files && files.length > 0) {
+
+            let uploadedFileURL = await uploadFile(files[0])
+            data['bookCover'] = uploadedFileURL
+                // res.status(201).send({ msg: "file uploaded succesfully", data: uploadedFileURL })
+        } else {
+            return res.status(400).send({ msg: "No file found" })
+        }
+
+        let bookDoc = await booksModel.create(data);
+        return res.status(201).send({
+            status: true,
+            message: "New book created successfully",
+            data: bookDoc,
+        });
     } catch (err) {
-        res.status(500).send({ status: false, error: err.message });
+        res.status(500).send({ status: false, data: err.message });
     }
 };
 
